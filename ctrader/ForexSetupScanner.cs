@@ -73,24 +73,25 @@ namespace cAlgo
             if (index < 2)
                 return;
 
-            UpdateHigherTimeframeLevels(index);
-
-            // On the live bar, evaluate the candle that has just closed.
-            if (index != Bars.Count - 1)
+            // Historical indices are closed candles. On the live bar, evaluate
+            // the previous candle so the still-forming candle never triggers.
+            int closed = index == Bars.Count - 1 ? index - 1 : index;
+            if (closed < 1)
                 return;
 
-            int closed = index - 1;
-            if (closed <= _lastProcessedClosedIndex)
-                return;
+            UpdateHigherTimeframeLevels(closed);
 
-            _lastProcessedClosedIndex = closed;
             if (TimeFrame != cAlgo.API.TimeFrame.Minute5)
             {
-                if (closed == index - 1)
+                if (index == Bars.Count - 1)
                     Print("Forex Setup Scanner: switch {0} to M5 for signals.", SymbolName);
                 return;
             }
 
+            if (closed <= _lastProcessedClosedIndex)
+                return;
+
+            _lastProcessedClosedIndex = closed;
             EvaluateClosedBar(closed);
         }
 
@@ -115,7 +116,7 @@ namespace cAlgo
 
             int timeIndex = source.OpenTimes.GetIndexByTime(chartTime);
             if (timeIndex < 0)
-                timeIndex = source.Count - 1;
+                return double.NaN;
 
             // Do not read the still-forming HTF candle.
             int lastClosed = Math.Min(timeIndex - 1, source.Count - 1);
@@ -151,6 +152,25 @@ namespace cAlgo
             }
 
             return double.NaN;
+        }
+
+        private double AtrAtIndex(Bars source, int period, int index)
+        {
+            if (source == null || index < period)
+                return double.NaN;
+
+            double sum = 0;
+            int start = index - period + 1;
+            for (int i = start; i <= index; i++)
+            {
+                double previousClose = source.ClosePrices[i - 1];
+                double tr = Math.Max(source.HighPrices[i] - source.LowPrices[i],
+                    Math.Max(Math.Abs(source.HighPrices[i] - previousClose),
+                             Math.Abs(source.LowPrices[i] - previousClose)));
+                sum += tr;
+            }
+
+            return sum / period;
         }
 
         private double AtrAtTime(Bars source, int period, DateTime chartTime)
@@ -219,7 +239,7 @@ namespace cAlgo
             if (i - _lastSignalIndex <= CooldownBars)
                 return;
 
-            double m5Atr = AtrAtTime(Bars, M5AtrPeriod, Bars.OpenTimes[i].AddTicks(1));
+            double m5Atr = AtrAtIndex(Bars, M5AtrPeriod, i);
             if (!IsFinite(m5Atr))
                 return;
 
