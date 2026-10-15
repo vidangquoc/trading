@@ -40,6 +40,9 @@ namespace cAlgo
         [Parameter("Show Plan Labels", DefaultValue = true, Group = "Display")]
         public bool ShowPlanLabels { get; set; }
 
+        [Parameter("Show Popup Alerts", DefaultValue = true, Group = "Alerts")]
+        public bool ShowPopupAlerts { get; set; }
+
         [Output("H1 Support", LineColor = "SeaGreen", Thickness = 1, PlotType = PlotType.DiscontinuousLine)]
         public IndicatorDataSeries H1Support { get; set; }
 
@@ -92,7 +95,7 @@ namespace cAlgo
                 return;
 
             _lastProcessedClosedIndex = closed;
-            EvaluateClosedBar(closed);
+            EvaluateClosedBar(closed, index == Bars.Count - 1);
         }
 
         private void UpdateHigherTimeframeLevels(int chartIndex)
@@ -201,7 +204,7 @@ namespace cAlgo
             return sum / period;
         }
 
-        private void EvaluateClosedBar(int i)
+        private void EvaluateClosedBar(int i, bool allowLiveNotification)
         {
             double open = Bars.OpenPrices[i];
             double high = Bars.HighPrices[i];
@@ -250,7 +253,7 @@ namespace cAlgo
                 double risk = entry - sl;
                 double tp = entry + risk * RewardRisk;
                 if (risk > Symbol.TickSize && entry < close)
-                    EmitSignal(i, true, entry, sl, tp);
+                    EmitSignal(i, true, entry, sl, tp, allowLiveNotification);
             }
             else if (shortSetup)
             {
@@ -259,7 +262,7 @@ namespace cAlgo
                 double risk = sl - entry;
                 double tp = entry - risk * RewardRisk;
                 if (risk > Symbol.TickSize && entry > close)
-                    EmitSignal(i, false, entry, sl, tp);
+                    EmitSignal(i, false, entry, sl, tp, allowLiveNotification);
             }
         }
 
@@ -274,7 +277,7 @@ namespace cAlgo
             return double.NaN;
         }
 
-        private void EmitSignal(int i, bool isLong, double entry, double sl, double tp)
+        private void EmitSignal(int i, bool isLong, double entry, double sl, double tp, bool allowLiveNotification)
         {
             _lastSignalIndex = i;
             string side = isLong ? "BUY LIMIT CANDIDATE" : "SELL LIMIT CANDIDATE";
@@ -282,7 +285,15 @@ namespace cAlgo
                 side, SymbolName, entry.ToString("F" + Symbol.Digits), sl.ToString("F" + Symbol.Digits),
                 tp.ToString("F" + Symbol.Digits), RewardRisk.ToString("0.##"));
 
-            Print(message);
+            // Historical candidates are drawn for review but must not generate
+            // popup/log alerts while the indicator is loading old bars.
+            if (allowLiveNotification)
+            {
+                Print(message);
+                if (ShowPopupAlerts)
+                    Notifications.ShowPopup("Forex Setup Scanner", message, PopupNotificationState.Success);
+            }
+
             string id = "FSS_" + SymbolName + "_" + i;
             Chart.DrawIcon(id + "_icon", isLong ? ChartIconType.UpArrow : ChartIconType.DownArrow,
                 i, isLong ? Bars.LowPrices[i] : Bars.HighPrices[i], isLong ? Color.Lime : Color.Red);
