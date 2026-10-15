@@ -153,9 +153,18 @@ namespace cAlgo
             return double.NaN;
         }
 
-        private double Atr(Bars source, int period, int index)
+        private double AtrAtTime(Bars source, int period, DateTime chartTime)
         {
-            if (source == null || index < period)
+            if (source == null)
+                return double.NaN;
+
+            int timeIndex = source.OpenTimes.GetIndexByTime(chartTime);
+            if (timeIndex < 0)
+                return double.NaN;
+
+            // Align historical signals to the last completed HTF bar at that time.
+            int index = timeIndex - 1;
+            if (index < period)
                 return double.NaN;
 
             double sum = 0;
@@ -188,8 +197,9 @@ namespace cAlgo
             double upperWick = high - Math.Max(open, close);
             double closePosition = (close - low) / range;
 
-            double h1Atr = Atr(_h1, HtfAtrPeriod, Math.Max(0, _h1.Count - 2));
-            double h4Atr = Atr(_h4, HtfAtrPeriod, Math.Max(0, _h4.Count - 2));
+            DateTime signalTime = Bars.OpenTimes[i];
+            double h1Atr = AtrAtTime(_h1, HtfAtrPeriod, signalTime);
+            double h4Atr = AtrAtTime(_h4, HtfAtrPeriod, signalTime);
             double h1Width = h1Atr * ZoneAtrMultiplier;
             double h4Width = h4Atr * ZoneAtrMultiplier;
 
@@ -209,7 +219,7 @@ namespace cAlgo
             if (i - _lastSignalIndex <= CooldownBars)
                 return;
 
-            double m5Atr = Atr(Bars, M5AtrPeriod, i);
+            double m5Atr = AtrAtTime(Bars, M5AtrPeriod, Bars.OpenTimes[i].AddTicks(1));
             if (!IsFinite(m5Atr))
                 return;
 
