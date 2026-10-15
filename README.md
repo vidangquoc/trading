@@ -13,7 +13,7 @@ A personal trading-tools project. The first tool is a cTrader Automate C# Forex 
 - Context timeframes: H1 and H4
 - Setup hypothesis: rejection/bounce at support or rejection at resistance
 - Entry workflow: calculate an indicative pending-order plan; do not submit orders
-- Alerts: print candidate and plan details in the cTrader log, plus chart markers/labels
+- Alerts: live popup notifications and log details, plus historical chart markers/labels
 - Execution: manual only; no automatic order placement
 
 ## Repository layout
