@@ -45,7 +45,7 @@ Reduce time spent watching Forex charts by detecting a small, explicit set of pr
 5. **Alerting / display**
    - Draw candidate arrows and optional entry/SL/TP labels.
    - Print candidate details to the Automate log.
-   - Verify available notification mechanisms and sound/popup behavior in the installed cTrader version before claiming push alerts are supported.
+   - Use cTrader's popup notification API for live candidates (available since cTrader Algo API 5.5); verify the installed version and desired desktop/mobile delivery behavior. A popup is not the same as a guaranteed push notification.
    - Prevent immediate repeated signals with a simple cooldown; this is not a complete candidate lifecycle.
 
 6. **Validation**
